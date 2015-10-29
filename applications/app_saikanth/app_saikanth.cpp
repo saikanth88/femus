@@ -1,5 +1,8 @@
+#include <cstdio>
 int main(){
-return 0;
   
+   printf("Hello TTU\n");
+   return 0;
+ 
 }
 
