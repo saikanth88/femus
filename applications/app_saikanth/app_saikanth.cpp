@@ -45,7 +45,7 @@ int main(int argc, char** args) {
 
   // init Petsc-MPI communicator
   FemusInit mpinit(argc, args, MPI_COMM_WORLD);
-
+//----------------------------------------Solution Begin-----------------------------------------
   // define multilevel mesh
   MultiLevelMesh mlMsh;
   double scalingFactor = 1.;
@@ -57,7 +57,9 @@ int main(int argc, char** args) {
   unsigned numberOfSelectiveLevels = 0;
   mlMsh.RefineMesh(numberOfUniformLevels , numberOfUniformLevels + numberOfSelectiveLevels, NULL);
   mlMsh.PrintInfo();
-
+//----------------------------------------Solution End-----------------------------------------
+  
+//----------------------------------------Problem Begin-----------------------------------------
   // define the multilevel solution and attach the mlMsh object to it
   MultiLevelSolution mlSol(&mlMsh);
 
@@ -71,7 +73,7 @@ int main(int argc, char** args) {
 
       // attach the boundary condition function and generate boundary data
       mlSol.AttachSetBoundaryConditionFunction(SetBoundaryCondition);
-      mlSol.GenerateBdc("u");
+      mlSol.GenerateBdc("U");
 
       // define the multilevel problem attach the mlSol object to it
       MultiLevelProblem mlProb(&mlSol);
@@ -79,8 +81,8 @@ int main(int argc, char** args) {
       // add system Poisson in mlProb as a Linear Implicit System
       LinearImplicitSystem& system = mlProb.add_system < LinearImplicitSystem > ("Poisson");
 
-      // add solution "u" to system
-      system.AddSolutionToSystemPDE("u");
+      // add solution "U" to system
+      system.AddSolutionToSystemPDE("U");
 
       // attach the assembling function to system
       system.SetAssembleFunction(AssemblePoissonProblem);
@@ -88,10 +90,11 @@ int main(int argc, char** args) {
       // initilaize and solve the system
       system.init();
       system.solve();
-
+//----------------------------------------Problem End-----------------------------------------
 
   //mlSol.Initialize("U", InitalValueU);
-//    
+
+//----------------------------------------Print solution-----------------------------------------
   // print solutions
   std::vector < std::string > variablesToBePrinted;
   variablesToBePrinted.push_back("U");
@@ -139,11 +142,11 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
 
   //solution variable
   unsigned soluIndex;
-  soluIndex = mlSol->GetIndex("u");    // get the position of "u" in the ml_sol object
-  unsigned soluType = mlSol->GetSolutionType(soluIndex);    // get the finite element type for "u"
+  soluIndex = mlSol->GetIndex("U");    // get the position of "U" in the ml_sol object
+  unsigned soluType = mlSol->GetSolutionType(soluIndex);    // get the finite element type for "U"
 
   unsigned soluPdeIndex;
-  soluPdeIndex = mlPdeSys->GetSolPdeIndex("u");    // get the position of "u" in the pdeSys object
+  soluPdeIndex = mlPdeSys->GetSolPdeIndex("U");    // get the position of "U" in the pdeSys object
 
   vector < double >  solu; // local solution
   solu.reserve(maxSize);
