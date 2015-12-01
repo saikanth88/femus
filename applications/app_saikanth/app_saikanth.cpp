@@ -17,6 +17,7 @@
 #include "GMVWriter.hpp"
 #include "LinearImplicitSystem.hpp"
 #include "NumericVector.hpp"
+#include "Files.hpp"
 
 using namespace femus;
 
@@ -47,7 +48,11 @@ int main(int argc, char** args) {
   FemusInit mpinit(argc, args, MPI_COMM_WORLD);
   
 
-  
+ // ======= Files ========================
+  Files files; 
+        files.ConfigureRestart();
+        files.CheckIODirectories();
+
   
 //----------------------------------------Solution Begin-----------------------------------------
   // define multilevel mesh
@@ -56,7 +61,7 @@ int main(int argc, char** args) {
   // read coarse level mesh and generate finers level meshes
   //mlMsh.ReadCoarseMesh("./input/square.neu", "seventh", scalingFactor);
     /** Built-in cube-structured mesh generator */
-  mlMsh.GenerateCoarseBoxMesh( 2,2,0,-0.5,0.5,-0.5,0.5,0.,0., QUAD9, "seventh");
+  mlMsh.GenerateCoarseBoxMesh( 4,4,0,-0.5,0.5,-0.5,0.5,0.,0., QUAD9, "seventh");
                                
                       
   /* "seventh" is the order of accuracy that is used in the gauss integration scheme
@@ -108,12 +113,12 @@ int main(int argc, char** args) {
   variablesToBePrinted.push_back("U");
 
   VTKWriter vtkIO(&mlSol);
-  vtkIO.write(DEFAULT_OUTPUTDIR, "biquadratic", variablesToBePrinted);
+  vtkIO.write(files.GetOutputPath(), "biquadratic", variablesToBePrinted);
 
-  GMVWriter gmvIO(&mlSol);
+  //GMVWriter gmvIO(&mlSol);
   variablesToBePrinted.push_back("all");
-  gmvIO.SetDebugOutput(false);
-  gmvIO.write(DEFAULT_OUTPUTDIR, "biquadratic", variablesToBePrinted);
+  //gmvIO.SetDebugOutput(false);
+  //gmvIO.write(DEFAULT_OUTPUTDIR, "biquadratic", variablesToBePrinted);
 
   return 0;
 }
