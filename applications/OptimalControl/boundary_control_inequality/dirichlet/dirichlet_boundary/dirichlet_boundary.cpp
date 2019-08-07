@@ -897,9 +897,10 @@ if ( i_vol == j_vol )  {
 	      }
 	      
 //============ Volume residuals ==================	    
-          Res[ assemble_jacobian<double,double>::res_row_index(Sol_n_el_dofs,pos_state,i) ] += - weight * ( target_flag * phi_u[i] * ( sol_u_gss - u_des)  - laplace_rhs_du_adj_i ); 
+          Res[ assemble_jacobian<double,double>::res_row_index(Sol_n_el_dofs,pos_state,i) ] += - weight * ( target_flag * phi_u[i] * ( sol_u_gss - u_des)  - laplace_rhs_du_adj_i 
+          /**/- phi_u[i] * sol_adj_gss /**/); 
           Res[ assemble_jacobian<double,double>::res_row_index(Sol_n_el_dofs,pos_ctrl,i) ]  += - penalty_outside_control_boundary * ( (1 - control_node_flag[i]) * (  sol_eldofs[pos_ctrl][i] - 0.)  );
-          Res[ assemble_jacobian<double,double>::res_row_index(Sol_n_el_dofs,pos_adj,i) ]   += - weight * (-1) * (laplace_rhs_dadj_u_i);
+          Res[ assemble_jacobian<double,double>::res_row_index(Sol_n_el_dofs,pos_adj,i) ]   += - weight * ((-1) * laplace_rhs_dadj_u_i /**/- phi_adj[i] * sol_u_gss /**/);
           Res[ assemble_jacobian<double,double>::res_row_index(Sol_n_el_dofs,pos_mu,i) ]    += - penalty_outside_control_boundary * ( (1 - control_node_flag[i]) * (  sol_eldofs[pos_mu][i] - 0.)  );
 //============  Volume Residuals ==================	    
 	      
@@ -922,7 +923,7 @@ if ( i_vol == j_vol )  {
               // BLOCK delta_state / state
 		Jac[ assemble_jacobian<double,double>::jac_row_col_index(Sol_n_el_dofs, sum_Sol_n_el_dofs, pos_state, pos_state, i, j) ]  += weight  * target_flag *  phi_u[i] * phi_u[j];   
               //BLOCK delta_state / adjoint
-		Jac[ assemble_jacobian<double,double>::jac_row_col_index(Sol_n_el_dofs, sum_Sol_n_el_dofs, pos_state, pos_adj, i, j) ]  += weight * (-1) * laplace_mat_du_adj;
+		Jac[ assemble_jacobian<double,double>::jac_row_col_index(Sol_n_el_dofs, sum_Sol_n_el_dofs, pos_state, pos_adj, i, j) ]  += weight * (-1) * laplace_mat_du_adj - weight * phi_u[i] * phi_adj[j];
 	      
 	      
               //=========== delta_control row ===========================
@@ -932,7 +933,7 @@ if ( i_vol == j_vol )  {
               
 	      //=========== delta_adjoint row ===========================
 	      // BLOCK delta_adjoint / state
-		Jac[ assemble_jacobian<double,double>::jac_row_col_index(Sol_n_el_dofs, sum_Sol_n_el_dofs, pos_adj, pos_state, i, j) ]  += weight * (-1) * laplace_mat_dadj_u;
+		Jac[ assemble_jacobian<double,double>::jac_row_col_index(Sol_n_el_dofs, sum_Sol_n_el_dofs, pos_adj, pos_state, i, j) ]  += weight * (-1) * laplace_mat_dadj_u - weight * phi_adj[i] * phi_u[j];
 
               // BLOCK delta_adjoint / adjoint
 // 	      if ( i < Sol_n_el_dofs[pos_adj] && j < Sol_n_el_dofs[pos_adj] )
