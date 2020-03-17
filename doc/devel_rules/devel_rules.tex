@@ -212,7 +212,24 @@ To overcome this, do
 
    \section{Parallel initialization}
    
+   If you want to retrieve 
+   
+   the number of processors
+   
+   or the current processor
+   
+   you can do so from any class that inherit ParallelObject
+   
+   
+   
    \section{Input parser}
+   
+   We have some interface to parse:
+   
+   - the command line
+   
+   - an input file
+   
    
  
  
@@ -234,9 +251,19 @@ To overcome this, do
    
    \section{Mesh}
    
- \section{Elem}
+  
+   \subsection{Elem}
   
   The Elem class contains the \textbf{list} of all elements
+  
+  Every Mesh object has an Elem object
+  
+  The Elem list is initialized in different manners at different levels:
+  
+  - at the COARSE level, it is constructed in the Read function of MEDIO or GambitIO
+  
+  - for all other levels, it is constructed in the RefineMesh function in MeshRefinement, with another constructor
+  
   
   
   
@@ -322,6 +349,27 @@ To overcome this, do
 //
 \end{verbatim}
   
+
+  
+  \subsection{Boundary mesh}
+    
+    Whenever you want to retrieve the Boundary of a Mesh,
+    you need to loop over each mesh element
+    and then loop over its \textit{faces}.
+    
+    If the FaceElementIndex is $ < 0 $, then it is a \textit{boundary} face.
+    
+    Otherwise, it is equal to the volume element number corresponding to that face!
+    
+    FaceElementIndex is initialized to $ - 1 $ at first.
+    
+    When the FaceElementIndex is stored, the flag that is on the mesh file is made NEGATIVE and then we subtract $ 1 $
+    
+    \subsection{Interface mesh}
+    
+    If I wanted some \textbf{interface} faces, not on the boundary, I should set their FaceElementIndex to be $ > 0 $.
+    How does this affect the rest of the code?
+    
   
   \section{Geometric Elements}
   
@@ -335,6 +383,8 @@ To overcome this, do
     \subsection{Gambit IO}
     
     \subsection{MED IO}
+    
+    In the mesh file we can specify Groups of Volume Elements as well as Groups of Face Elements.
     
     
     
@@ -365,6 +415,10 @@ To overcome this, do
   
   \section{MeshRefinement}
 
+   
+    This object is used in the MultilevelMesh class, to construct the various levels
+  
+  
   \chapter{Solution (Quantities, Equations, Operators)}
 
 
@@ -492,7 +546,7 @@ you pick for the quadrature the ones that guarantees exactness for the highest-d
  
  
  
-\part{Git Cheat Sheet}
+\part{Git}
 
 
 - First golden rule: using the manual never hurts.
@@ -544,7 +598,39 @@ From command line:
 To be added
 
 
-\part{Salome}
+\part{Mesh Generation: Salome}
+
+
+\chapter{Features}
+
+
+ - {SUPPORT for DIFFERENT SHAPE ELEMENTS (quad, hex, tri, tet, ...)} 
+
+ - {SUPPORT for HYBRID MESHES (different elements on the same mesh)}
+    
+ - {SUPPORT for BIQUADRATIC ELEMENTS}
+    
+ - {SUPPORT for SCRIPTING}
+  
+ - Possibility to define Data or Initial/Boundary conditions on your Mesh 
+
+ - {An ACTIVE COMMUNITY of USERS}
+
+ - Potentially, Salome is also available to be \textit{compiled} on your computer
+ 
+ - Salome also contain its own version of Paraview
+
+\chapter{Installation issues}
+
+  The first time you run Salome after installation,
+  you may have it asking for opening service...
+
+The "Failed to narrow the root naming context" 
+is an error displayed when there is no entry in /etc/hosts 
+corresponding to your hostname. So, you need to add it
+
+YOU HAVE TO PUT WHAT COMES OUT OF ``hostname''!
+
 
 
  \chapter{SHAPER Module}
@@ -640,9 +726,66 @@ In Mesh:
 
 - You can use Filters to define Groups of Mesh Elements
 
+\subsubsection{Can I define more than one Group?}
 
-  
+ Yes, you can. It will be a bit more complicated to handle the reading, though.
+ In fact, when Groups of elements are intersection,
+ the naming inside the MED file changes
+ 
+ If there are groups that intersect, then Salome - when exporting to MED - 
+ will define intersecting families. 
+ 
+ If there are elements belonging to 2 groups,
+ they will define a FAM with its own index and the name of the 2 groups
+ 
+ So, the elements belonging only to 1 group will have a FAM with only one group
+ 
+ So, FAM are generated based on WHAT INTERSECTIONS BETWEEN GROUPS there are.
+ 
+ All of this is made in such a way that every element 
+ will have \textit{only one} FAM number in the FAM field of the elements.
+ 
+
+\subsubsection{Can I select faces INSIDE the domain, not at the boundary???}
+
+ The MED format exports only the BOUNDARY ELEMENTS...
+ How can I export INNER FACE ELEMENTS as well?
+ Well, when I draw a mesh by doing Submeshes and making a Compound,
+ there are still elements from the interfaces of the boundaries...
+ 
+ We could have some of the inner edges, coming from the result of drawing subpieces 
+
+ Perhaps what we can do is to not remove the inner faces used to build the submeshes.
+ 
+ Then, I have to change the way I check that ALL boundaries have been implemented,
+ because now I will have additional edges in the list of all edges
+ that are NOT boundary edges...
+ Basically, to check if an element is on the boundary I would 
+ just have to count how many volume elements it belongs to
+ (I am excluding a slit domain with this)
+ 
+ If an edge belongs only to 1 volume element, then it is a Boundary face.
+ 
+ 
+ - An alternative - by hand - could be to use ``Add Quadratic Edge''... but it's very tedious
+ 
+ - The solution of keeping the inner edges is constrained to the fact 
+   that I have to draw thinking of those inner edges ``ahead of time''.
+   For instance, assume you want to perform integration over a face 
+   that was not used to draw your mesh... 
+   Then you should draw your mesh using that face from the very beginning...
+   
+ - The third solution, in case we cannot create groups of inner edges graphically,
+    is to revert back to using if's on the coordinates...  
+ 
+ - Another way that is graphical consists in defining the Group of Volume Elements
+ whose Boundary you want to identify,
+ and then do ``Create boundary elements'' on that Group
+ 
+ 
+ 
 \section{QUADRILATERAL MESH of a CIRCLE/SEMISPHERE}
+
 
 Divided Disk or Divided Cylinder do exactly what you are looking for!!!
 
@@ -805,9 +948,97 @@ On the other hand, if instead of dumping the script I save the study it is NOT c
     That group should appear as a "child" of the Geometry object you will then mesh. I can try this to double check.
 
 
- \part{Hdfview}
+\part{Mesh Visualization: Paraview}
 
 
+\chapter{Selections}
+
+
+ If you want to select only some cells based on a Threshold value, use the Threshold filter
+
+ If you want to select only some cells interactively, do Interactive Cells mode on
+ 
+ If you want the Edges, do Extract Edges first
+ 
+ What if I want to extract all the Faces? 
+   Should I split each element, and then Extract Surface for each element??
+
+ You can also use Edit -> Find data to establish Selection criteria
+ 
+ 
+ \chapter{Plots}
+ 
+- plot in the x and y directions
+
+- plot along the axis
+
+- warp in z direction
+
+- warp in y direction ("boat")
+
+- glyphs
+
+- streamlines
+
+
+\chapter{COMPARE/DIFF RESULTS  in paraview}
+
+Can I compare results in paraview?
+Well, you should have the same geometry, with the same mesh.
+Also, if you want the same numbering,
+you should have the SAME NUMBER OF LEVELS 
+and the SAME NUMBER OF PROCESSORS...
+
+You could make a diff of the hdf5 files, but if the NODE ORDERING 
+is different, then you're gonna have even the same values but in 
+different order!
+So you have to use the SAME LEVS and SAME PROCS,
+unless paraview has a GEOMETRIC DIFF, based not on the numbering 
+but on the COORDINATE POSITIONS!!!
+
+I found this script for Programmable filter
+http://rbfzone.blogspot.com/2011/06/difference-two-datasets-in-paraview.html
+Still it doesn't work to me with different files, but in the same file it works
+
+
+\# Get the two inputs
+A = self.GetInputDataObject(0, 0)
+B = self.GetInputDataObject(0, 1)
+s0 = A.GetPointData().GetScalars('Becontx')
+s1 = B.GetPointData().GetScalars('Becontx\_LEVEL2')
+out = vtk.vtkDoubleArray()
+out.SetName('Set Signed Err')
+out2 = vtk.vtkDoubleArray()
+out2.SetName('Set Unsigned Err')
+out3 = vtk.vtkDoubleArray()
+out3.SetName('Set Rel Err')
+for i in xrange(A.GetNumberOfPoints()):
+    val1 = s0.GetValue(i)
+    val2 = s1.GetValue(i)
+    val\_err = val1 - val2;
+    out.InsertNextValue(val\_err)
+    out2.InsertNextValue(abs(val\_err))
+    out3.InsertNextValue(abs(val\_err)/abs(val1))
+\# Initialize the output and add the labels array
+output = self.GetOutput()
+output.ShallowCopy(B)
+output.GetPointData().AddArray(out)
+output.GetPointData().AddArray(out2)
+output.GetPointData().AddArray(out3)
+
+
+
+ \part{File format: HDF5}
+ 
+ \chapter{HDF5} 
+ 
+  - How can I DIFF two HDF5 files?!?
+
+   Yes there is a utility, called "h5diff"! 
+   
+
+ \chapter{HDFView}
+ 
 Follow the instruction in the HDFVIEW website
 
 At the end of the build process, you should have an hdfview.sh script inside the bin directory of your build.
@@ -815,7 +1046,12 @@ You must open that script and change the INSTALLDIR variable with the path of th
 
 Another alternative to view the content of an HDF5 file is to use the 'h5dump' utility shipped with HDF5 (installed through PETSc, for instance)
 
+You can change the names of the Datasets from HDFVIEW
    
-    
+   
+ \chapter{XDMF}
+ 
+ A way to read HDF5 files from within Paraview
+
     
 \end{document}

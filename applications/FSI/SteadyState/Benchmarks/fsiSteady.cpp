@@ -8,14 +8,12 @@
 #include "FElemTypeEnum.hpp"
 #include "Files.hpp"
 #include "MonolithicFSINonLinearImplicitSystem.hpp"
+#include "CurrentElem.hpp"
 #include "../include/FSISteadyStateAssembly.hpp"
 #include <dlfcn.h>
 
-#include "CurrentElem.hpp"
 
-#define FACE_FOR_QOI             4   
 
-#define FE_DOMAIN  2
 
 
 using namespace std;
@@ -25,7 +23,6 @@ void PrintMumpsInfo      (const std::string output_path, const char *stdOutfile,
 void PrintConvergenceInfo(const std::string output_path, const char *stdOutfile, const char* mesh_file, const unsigned &numofrefinements);
 void PrintMultigridTime  (const std::string output_path, const char *stdOutfile, const char* mesh_file, const unsigned &numofrefinements);
 
-void ComputeQoI(const MultiLevelProblem& ml_prob, const unsigned level, const MonolithicFSINonLinearImplicitSystem* mlPdeSys);
 
 ///@todo I believe I have to review how the computation of the normal is performed
 ///@todo let the files be read from each run folder
@@ -73,80 +70,82 @@ int main(int argc, char **args) {
   }
 
   // ******* reading input parameters *******
+  std::string third_arg_options = "fsiSteady.cpp";
+  
   PetscOptionsBegin(PETSC_COMM_WORLD, "", "FSI steady problem options", "Unstructured mesh");
 
   cout << " Reading flags:" << endl;
 
-  PetscOptionsBool("-mem_infos", "Print memory infos", "fsiSteady.cpp", mem_infos, &mem_infos, NULL);
+  PetscOptionsBool("-mem_infos", "Print memory infos", third_arg_options.c_str(), mem_infos, &mem_infos, NULL);
   printf(" mem_infos: %d\n", mem_infos);
 
-  PetscOptionsInt("-nlevel", "The number of mesh levels", "fsiSteady.cpp", numofmeshlevels , &numofmeshlevels, NULL);
+  PetscOptionsInt("-nlevel", "The number of mesh levels", third_arg_options.c_str(), numofmeshlevels , &numofmeshlevels, NULL);
   printf(" nlevel: %i\n", numofmeshlevels);
 
-  PetscOptionsInt("-nrefinement", "The number of refinements", "fsiSteady.cpp", numofrefinements , &numofrefinements, NULL);
+  PetscOptionsInt("-nrefinement", "The number of refinements", third_arg_options.c_str(), numofrefinements , &numofrefinements, NULL);
   printf(" nrefinement: %i\n", numofrefinements);
 
-  PetscOptionsString("-input", "The name of the input file", "fsiSteady.cpp", "./mesh.neu", mesh_file, len_mesh_file_name, NULL);
+  PetscOptionsString("-input", "The name of the input file", third_arg_options.c_str(), "./mesh.neu", mesh_file, len_mesh_file_name, NULL);
   printf(" input: %s\n", mesh_file);
 
-  PetscOptionsString("-std_output", "The name of the redirected standard output file", "fsiSteady.cpp", "", stdOutfile, len_mesh_file_name, NULL);
+  PetscOptionsString("-std_output", "The name of the redirected standard output file", third_arg_options.c_str(), "", stdOutfile, len_mesh_file_name, NULL);
   printf(" redirected standard output: %s\n", stdOutfile);
 
-  PetscOptionsString("-ic_bdc", "The name of the file with bdc and ic functions", "fsiSteady.cpp", "", bdcfilename, len_mesh_file_name, NULL);
+  PetscOptionsString("-ic_bdc", "The name of the file with bdc and ic functions", third_arg_options.c_str(), "", bdcfilename, len_mesh_file_name, NULL);
   printf(" ic_bdc: %s\n", bdcfilename);
 
-  PetscOptionsReal("-rhof", "The density of the fluid", "fsiSteady.cpp", rhof, &rhof, NULL);
+  PetscOptionsReal("-rhof", "The density of the fluid", third_arg_options.c_str(), rhof, &rhof, NULL);
   printf(" rhof: %f\n", rhof);
 
-  PetscOptionsReal("-rhos", "The density of the solid", "fsiSteady.cpp", rhos, &rhos, NULL);
+  PetscOptionsReal("-rhos", "The density of the solid", third_arg_options.c_str(), rhos, &rhos, NULL);
   printf(" rhos: %f\n", rhos);
 
-  PetscOptionsReal("-E", "The young module of the solid", "fsiSteady.cpp", E, &E, NULL);
+  PetscOptionsReal("-E", "The young module of the solid", third_arg_options.c_str(), E, &E, NULL);
   printf(" E: %f\n", E);
 
-  PetscOptionsReal("-muf", "The viscosity of the fluid", "fsiSteady.cpp", muf, &muf, NULL);
+  PetscOptionsReal("-muf", "The viscosity of the fluid", third_arg_options.c_str(), muf, &muf, NULL);
   printf(" muf: %f\n", muf);
 
-  PetscOptionsReal("-ni", "The Poisson coefficient of the Solid", "fsiSteady.cpp", ni, &ni, NULL);
+  PetscOptionsReal("-ni", "The Poisson coefficient of the Solid", third_arg_options.c_str(), ni, &ni, NULL);
   printf(" ni: %f\n", ni);
 
-//   PetscOptionsInt("-nlin_iter", "The number of linear iteration", "fsiSteady.cpp", numlineariter , &numlineariter, NULL);
+//   PetscOptionsInt("-nlin_iter", "The number of linear iteration", third_arg_options.c_str(), numlineariter , &numlineariter, NULL);
 //   printf(" nlin_iter: %i\n", numlineariter);
 
-  PetscOptionsBool("-equation_pivoting", "Set equation pivoting during assembly", "fsiSteady.cpp", equation_pivoting , &equation_pivoting, NULL);
+  PetscOptionsBool("-equation_pivoting", "Set equation pivoting during assembly", third_arg_options.c_str(), equation_pivoting , &equation_pivoting, NULL);
   printf(" equation_pivoting: %i\n", equation_pivoting);
 
-  PetscOptionsInt("-nnonlin_iter", "The number of non-linear iteration", "fsiSteady.cpp", numnonlineariter, &numnonlineariter, NULL);
+  PetscOptionsInt("-nnonlin_iter", "The number of non-linear iteration", third_arg_options.c_str(), numnonlineariter, &numnonlineariter, NULL);
   printf(" nnonlin_iter: %i\n", numnonlineariter);
 
-  PetscOptionsReal("-lin_tol", "The linear solver tolerance", "fsiSteady.cpp", lin_tol, &lin_tol, NULL);
+  PetscOptionsReal("-lin_tol", "The linear solver tolerance", third_arg_options.c_str(), lin_tol, &lin_tol, NULL);
   printf(" lin_tol: %g\n", lin_tol);
 
-  PetscOptionsReal("-alin_tol", "The abs linear solver tolerance", "fsiSteady.cpp", alin_tol, &alin_tol, NULL);
+  PetscOptionsReal("-alin_tol", "The abs linear solver tolerance", third_arg_options.c_str(), alin_tol, &alin_tol, NULL);
   printf(" alin_tol: %g\n", alin_tol);
 
-  PetscOptionsReal("-nonlin_tol", "The nonlinear solver tolerance", "fsiSteady.cpp", nonlin_tol, &nonlin_tol, NULL);
+  PetscOptionsReal("-nonlin_tol", "The nonlinear solver tolerance", third_arg_options.c_str(), nonlin_tol, &nonlin_tol, NULL);
   printf(" nonlin_tol: %g\n", nonlin_tol);
 
-  PetscOptionsInt("-asm_block", "The asm block dimension", "fsiSteady.cpp", asm_block, &asm_block, NULL);
+  PetscOptionsInt("-asm_block", "The asm block dimension", third_arg_options.c_str(), asm_block, &asm_block, NULL);
   printf(" asm_block: %i\n", asm_block);
 
-  PetscOptionsString("-outer_ksp_solver", "The outer ksp solver", "fsiSteady.cpp", "gmres", outer_ksp_solver, len_mesh_file_name, NULL);
+  PetscOptionsString("-outer_ksp_solver", "The outer ksp solver", third_arg_options.c_str(), "gmres", outer_ksp_solver, len_mesh_file_name, NULL);
   printf(" outer_ksp_solver: %s\n", outer_ksp_solver);
 
-  PetscOptionsInt("-npre", "The number of presmoothing step", "fsiSteady.cpp", npre, &npre, NULL);
+  PetscOptionsInt("-npre", "The number of presmoothing step", third_arg_options.c_str(), npre, &npre, NULL);
   printf(" npre: %i\n", npre);
 
-  PetscOptionsInt("-npost", "The number of postmoothing step", "fsiSteady.cpp", npost, &npost, NULL);
+  PetscOptionsInt("-npost", "The number of postmoothing step", third_arg_options.c_str(), npost, &npost, NULL);
   printf(" npost: %i\n", npost);
 
-  PetscOptionsInt("-ksp_restart", "The number of ksp linear step before restarting", "fsiSteady.cpp", ksp_restart, &ksp_restart, NULL);
+  PetscOptionsInt("-ksp_restart", "The number of ksp linear step before restarting", third_arg_options.c_str(), ksp_restart, &ksp_restart, NULL);
   printf(" ksp_restart: %i\n", ksp_restart);
 
-  PetscOptionsInt("-max_outer_solver_iter", "The maximum outer solver iterations", "fsiSteady.cpp", max_outer_solver_iter, &max_outer_solver_iter, NULL);
+  PetscOptionsInt("-max_outer_solver_iter", "The maximum outer solver iterations", third_arg_options.c_str(), max_outer_solver_iter, &max_outer_solver_iter, NULL);
   printf(" max_outer_solver_iter: %i\n", max_outer_solver_iter);
 
-   PetscOptionsString("-output_time", "The name of the redirected standard output file", "fsiSteady.cpp", "", output_time, len_mesh_file_name, NULL);
+   PetscOptionsString("-output_time", "The name of the redirected standard output file", third_arg_options.c_str(), "", output_time, len_mesh_file_name, NULL);
   printf(" Output time folder: %s\n", output_time);
   
   printf("\n");
@@ -229,25 +228,72 @@ output_path.append("/");
   const std::string mesh_file_path = mesh_file_folder + mesh_file;
   MultiLevelMesh ml_msh(numofrefinements, numofrefinements, mesh_file_path.c_str(), fe_quad_rule.c_str(), Lref, NULL);
 
+  
   ml_msh.EraseCoarseLevels(numofrefinements - numofmeshlevels);
 
   ml_msh.PrintInfo();
 
   dimension = ml_msh.GetLevel(0)->GetDimension();
 
+ // ==================================
+//   This is done at the beginning, so the mesh is in its original position and I can do a check with if''s on coordinates correctly
+ // ==================================
+ //How do I handle the computation of the NORMAL for inner edges?
+ // I need to make sure that the normal is in the right direction
+ // What I'll do is the following: I will restrict the loop over Volume Elements 
+ // only to those that belong to Group 6 !
+ // ==================================
+  //If you want this field to be defined at all levels, this operation has to be performed BEFORE we remove all levels
+  //If you want this field to be defined only at the finest level, then do it here
+  //here I have to create another structure that only aims at isolating the interface faces inside the mesh
+  
+  // - either I do it through a check on the coordinates (it has to be on the fixed mesh, the initial one)
+  // - or I do a structure on the mesh skeleton that sets a -1 to all faces and then sets a different number to the others
+
+  //it will be similar to elementnearface
+  //si potrebbe fare anche svincolata dagli elementi di volume ma supponiamo sia insieme
+  //faccio una funzione che non contiene informazione sugli elementi di volume, solo facce.
+  
+  //indice POSITIVO per le facce NON FLAGGATE (+1) nel mesh file 
+  //indice NEGATIVO per le facce FLAGGATE nel mesh file (o di Boundary, o di qualsiasi Interfaccia) (parte da -2 mi sa, per conformita')
+  
+  //faccio questa struttura con la stessa allocazione iniziale di elementnearface
+
+  std::vector< MyMatrix <int> > _element_faces(numofmeshlevels);  //@todo is this about the faces of each element, only
+  //I need to allocate this at all levels! or better, at least at the finest level, which requires the coarser
+  //it seems like it is first allocated at the coarse level, and then with the refinement it goes to all levels
+  
+   allocate_element_faces(_element_faces, ml_msh);
+
+   const std::vector < int >  all_face_flags =  {WET_RIGID,   WET_DEFORMABLE /*DRY_RIGID_DEFORMABLE*/};
+   
+   const int group_outside_solid_to_which_all_faces_belong = GROUP_VOL_ELEMS; 
+   
+
+   fill_element_faces(_element_faces, ml_msh, all_face_flags, group_outside_solid_to_which_all_faces_belong);
+
+   
+   
+  
   // ******* Fluid and Solid Parameters *******
-  Parameter par(Lref,Uref);
+//    const std::string solid_model = "Neo-Hookean";
+   const std::string solid_model = "Mooney-Rivlin";
+   
+   const std::string fluid_model = "Newtonian";
+   
+   
+  Parameter par(Lref, Uref);
 
   // Generate Solid Object
   Solid solid;
-  solid = Solid(par,E,ni,rhos,"Mooney-Rivlin");
+  solid = Solid(par, E, ni, rhos, solid_model.c_str() );
 
   cout << "Solid properties: " << endl;
   cout << solid << endl;
 
   // Generate Fluid Object
 
-  Fluid fluid(par,muf,rhof,"Newtonian");
+  Fluid fluid(par, muf, rhof, fluid_model.c_str() );
   cout << "Fluid properties: " << endl;
   cout << fluid << endl;
 
@@ -256,22 +302,31 @@ output_path.append("/");
   MultiLevelSolution ml_sol(&ml_msh);
 
   // ******* Add solution variables to multilevel solution and pair them *******
-  ml_sol.AddSolution("DX",LAGRANGE,SECOND,1);
-  ml_sol.AddSolution("DY",LAGRANGE,SECOND,1);
-  if (dimension==3) ml_sol.AddSolution("DZ",LAGRANGE,SECOND,1);
+  ml_sol.AddSolution("DX", LAGRANGE, SECOND, 1);
+  ml_sol.AddSolution("DY", LAGRANGE, SECOND, 1);
+  if (dimension == 3) ml_sol.AddSolution("DZ", LAGRANGE, SECOND, 1);
 
-  ml_sol.AddSolution("U",LAGRANGE,SECOND,1);
-  ml_sol.AddSolution("V",LAGRANGE,SECOND,1);
-  if (dimension==3) ml_sol.AddSolution("W",LAGRANGE,SECOND,1);
+  ml_sol.AddSolution("U", LAGRANGE, SECOND, 1);
+  ml_sol.AddSolution("V", LAGRANGE, SECOND, 1);
+  if (dimension == 3) ml_sol.AddSolution("W", LAGRANGE, SECOND, 1);
 
   // Pair each velocity variable with the corresponding displacement variable
-  ml_sol.PairSolution("U","DX"); // Add this line
-  ml_sol.PairSolution("V","DY"); // Add this line
-  if (dimension==3) ml_sol.PairSolution("W","DZ"); // Add this line
+  ml_sol.PairSolution("U", "DX"); // Add this line
+  ml_sol.PairSolution("V", "DY"); // Add this line
+  if (dimension == 3) ml_sol.PairSolution("W","DZ"); // Add this line
 
+  
+//   const FEFamily pressure_fe_fam   = LAGRANGE;
+//   const FEOrder  pressure_fe_order = FIRST;
+  const FEFamily pressure_fe_fam   = DISCONTINUOUS_POLYNOMIAL;
+  const FEOrder  pressure_fe_order = FIRST;
+//   const FEFamily pressure_fe_fam   = DISCONTINUOUS_POLYNOMIAL;
+//   const FEOrder  pressure_fe_order = ZERO;
+  
+  
   // Since the Pressure is a Lagrange multiplier it is used as an implicit variable
-  ml_sol.AddSolution("P",DISCONTINUOUS_POLYNOMIAL,FIRST,1);
-  ml_sol.AssociatePropertyToSolution("P","Pressure",false); // Add this line
+  ml_sol.AddSolution("P", pressure_fe_fam, pressure_fe_order, 1);
+  ml_sol.AssociatePropertyToSolution("P", "Pressure", false); // Add this line
 
   // ******* Initialize solution *******
   ml_sol.Initialize("All");
@@ -304,6 +359,10 @@ output_path.append("/");
   // Add Solid Object
   ml_prob.parameters.set<Solid>("Solid") = solid;
 
+//     std::cout << ml_prob.parameters.get<Fluid>("Fluid") << std::endl;
+//     std::cout << fluid << std::endl;
+
+  
   const bool solve_system = true;
   
   if (solve_system) {
@@ -415,7 +474,7 @@ output_path.append("/");
   print_vars.push_back("All");
 
   ml_sol.GetWriter()->SetDebugOutput(true);
-  ml_sol.GetWriter()->Write(output_path,"biquadratic",print_vars);
+  ml_sol.GetWriter()->Write(output_path, "biquadratic", print_vars);
 
   if(mem_infos) {
     PetscMemoryGetCurrentUsage(&memory_current_usage);
@@ -424,15 +483,9 @@ output_path.append("/");
     PetscPrintf(PETSC_COMM_WORLD, "5: Memory maximum usage before clear: %g M\n", (double)(memory_maximum_usage)/(1024.*1024.));
   }
 
-  // ******* Clear all systems *******
-  ml_prob.clear();
-
-  // ******* close the library *******
-  dlclose(handle);
-  
   // ******* Postprocessing *******
   
-  ComputeQoI(ml_prob, numofmeshlevels - 1, NULL);
+  Compute_normal_stress_interface(ml_prob, numofmeshlevels - 1, all_face_flags, 0, _element_faces, NULL);
 
   if(strcmp (output_file_to_parse.c_str(), "") != 0) {
     PrintMumpsInfo      (output_path, output_file_to_parse.c_str(), mesh_file, numofrefinements);
@@ -440,6 +493,12 @@ output_path.append("/");
     PrintMultigridTime  (output_path, output_file_to_parse.c_str(), mesh_file, numofrefinements);
   }
 
+  // ******* Clear all systems *******
+  ml_prob.clear();
+
+  // ******* close the library *******
+  dlclose(handle);
+  
   return 0;
 }
 
@@ -677,216 +736,3 @@ void PrintMultigridTime(const std::string output_path, const char *stdOutfile, c
 
 
 
-void ComputeQoI(const MultiLevelProblem& ml_prob, const unsigned level, const MonolithicFSINonLinearImplicitSystem* mlPdeSys)    {
-  
-  
-//   const MonolithicFSINonLinearImplicitSystem* mlPdeSys  = &ml_prob.get_system< MonolithicFSINonLinearImplicitSystem > ("Fluid-Structure-Interaction");
-//   const unsigned level = mlPdeSys->GetLevelToAssemble();
-
-  Mesh*                    msh = ml_prob._ml_msh->GetLevel(level);
-  elem*                     el = msh->el;
-
-  MultiLevelSolution*    ml_sol = ml_prob._ml_sol;
-  Solution*                sol = ml_prob._ml_sol->GetSolutionLevel(level);
-
-  const unsigned  dim = msh->GetDimension();
-  unsigned dim2 = (3 * (dim - 1) + !(dim - 1));        // dim2 is the number of second order partial derivatives (1,3,6 depending on the dimension)
-  const unsigned max_size = static_cast< unsigned >(ceil(pow(3, dim)));          // conservative: based on line3, quad9, hex27
-
-  unsigned    iproc = msh->processor_id(); // get the process_id (for parallel computation)
-
-  //=============== Geometry ========================================
-   unsigned solType_coords = FE_DOMAIN;
- 
-  CurrentElem < double > geom_element(dim, msh);
-    
-  constexpr unsigned int space_dim = 3;
-  
-  std::vector<double> normal(space_dim, 0.);
- //***************************************************
-
-  //=============== Integration ========================================
-  double weight = 0.;
-  double weight_bdry = 0.; // gauss point weight on the boundary
-
-  
- //*************** state ***************************** 
- //*************************************************** 
-  vector <double> phi_u;     phi_u.reserve(max_size);
-  vector <double> phi_u_x;   phi_u_x.reserve(max_size * space_dim);
-  vector <double> phi_u_xx;  phi_u_xx.reserve(max_size * dim2);
-
- 
-  unsigned solIndex_u;
-  solIndex_u = ml_sol->GetIndex("U");    // get the position of "state" in the ml_sol object
-  unsigned solType_u = ml_sol->GetSolutionType(solIndex_u);    // get the finite element type for "state"
-
-  vector < double >  sol_u; // local solution
-  sol_u.reserve(max_size);
-  
-  double u_gss = 0.;
- //*************************************************** 
- //***************************************************
- //***************************************************
-  vector <double> phi_u_bdry;  
-  vector <double> phi_u_x_bdry; 
-
-  phi_u_bdry.reserve(max_size);
-  phi_u_x_bdry.reserve(max_size * space_dim);
-
-
-  
-  double integral_volume = 0.;
-  double integral_bdry   = 0.;
-
-  
-
- //*************************************************** 
-     std::vector < std::vector < double > >  JacI_qp(space_dim);
-     std::vector < std::vector < double > >  Jac_qp(dim);
-    for (unsigned d = 0; d < Jac_qp.size(); d++) {   Jac_qp[d].resize(space_dim); }
-    for (unsigned d = 0; d < JacI_qp.size(); d++) { JacI_qp[d].resize(dim); }
-    
-    double detJac_qp;
-
-     std::vector < std::vector < double > >  JacI_qp_bdry(space_dim);
-     std::vector < std::vector < double > >  Jac_qp_bdry(dim-1);
-    for (unsigned d = 0; d < Jac_qp_bdry.size(); d++) {   Jac_qp_bdry[d].resize(space_dim); }
-    for (unsigned d = 0; d < JacI_qp_bdry.size(); d++) { JacI_qp_bdry[d].resize(dim-1); }
-    
-    double detJac_qp_bdry;
-    
-      //prepare Abstract quantities for all fe fams for all geom elems: all quadrature evaluations are performed beforehand in the main function
-  std::vector < std::vector < /*const*/ elem_type_templ_base<double, double> *  > > elem_all;
-  ml_prob.get_all_abstract_fe(elem_all);
- //*************************************************** 
-  
-  
-  // element loop: each process loops only on the elements that owns
-  for (int iel = msh->_elementOffset[iproc]; iel < msh->_elementOffset[iproc + 1]; iel++) {
-
-    geom_element.set_coords_at_dofs_and_geom_type(iel, solType_coords);
-        
-    const short unsigned ielGeom = geom_element.geom_type();
-
-   
- //*********** state ********************************* 
-    unsigned nDof_u     = msh->GetElementDofNumber(iel, solType_u);
-    sol_u    .resize(nDof_u);
-   // local storage of global mapping and solution
-    for (unsigned i = 0; i < sol_u.size(); i++) {
-      unsigned solDof_u = msh->GetSolutionDof(i, iel, solType_u);
-      sol_u[i] = (*sol->_Sol[solIndex_u])(solDof_u);
-    }
- //*********** state ********************************* 
-
- 
- //********** ALL VARS ******************************* 
-    int nDof_max    =  nDof_u;   //  TODO COMPUTE MAXIMUM maximum number of element dofs for one scalar variable
-    
- //***************************************************
-
-	       
-	  // loop on faces of the current element
-
-	  for(unsigned jface = 0; jface < msh->GetElementFaceNumber(iel); jface++) {
-          
-       const unsigned ielGeom_bdry = msh->GetElementFaceType(iel, jface);    
-       const unsigned nve_bdry_u = msh->GetElementFaceDofNumber(iel,jface,solType_u);
-       
-
-       geom_element.set_coords_at_dofs_bdry_3d(iel, jface, solType_coords);
- 
-       geom_element.set_elem_center_bdry_3d();
-
-       
-	    // look for boundary faces
-            const int bdry_index = el->GetFaceElementIndex(iel,jface);
-            
-	    if( bdry_index < 0) {
-	      unsigned int face = -( msh->el->GetFaceElementIndex(iel,jface)+1);
-	      
-		
-// 	      if( !ml_sol->_SetBoundaryConditionFunction(xx,"U",tau,face,0.) && tau!=0.){
-	      if(  face == FACE_FOR_QOI) { //control face
-
-	
-		//============ initialize gauss quantities on the boundary ==========================================
-                double sol_u_bdry_gss = 0.;
-                std::vector<double> sol_u_x_bdry_gss(space_dim);
-		//============ initialize gauss quantities on the boundary ==========================================
-		
-		for(unsigned ig_bdry = 0; ig_bdry < ml_prob.GetQuadratureRule(ielGeom_bdry).GetGaussPointsNumber(); ig_bdry++) {
-		  
-    elem_all[ielGeom_bdry][solType_coords]->JacJacInv(geom_element.get_coords_at_dofs_bdry_3d(), ig_bdry, Jac_qp_bdry, JacI_qp_bdry, detJac_qp_bdry, space_dim);
-    weight_bdry = detJac_qp_bdry * ml_prob.GetQuadratureRule(ielGeom_bdry).GetGaussWeightsPointer()[ig_bdry];
-    elem_all[ielGeom_bdry][solType_u] ->shape_funcs_current_elem(ig_bdry, JacI_qp_bdry, phi_u_bdry, phi_u_x_bdry, boost::none, space_dim);
-
-		  
-		 //========== compute gauss quantities on the boundary ===============================================
-		  sol_u_bdry_gss = 0.;
-                  std::fill(sol_u_x_bdry_gss.begin(), sol_u_x_bdry_gss.end(), 0.);
-		      for (int i_bdry = 0; i_bdry < nve_bdry_u; i_bdry++)  {
-		    unsigned int i_vol = msh->GetLocalFaceVertexIndex(iel, jface, i_bdry);
-			
-			sol_u_bdry_gss +=  sol_u[i_vol] * phi_u_bdry[i_bdry];
-                            for (int d = 0; d < space_dim; d++) {
-			      sol_u_x_bdry_gss[d] += sol_u[i_vol] * phi_u_x_bdry[i_bdry * space_dim + d];
-			    }
-		      }
-		      
-		      double laplace_ctrl_surface = 0.;  for (int d = 0; d < space_dim; d++) { laplace_ctrl_surface += sol_u_x_bdry_gss[d] * sol_u_x_bdry_gss[d]; }
-
-                 //========= compute gauss quantities on the boundary ================================================
-                  integral_bdry +=  weight_bdry */* sol_u_bdry_gss * sol_u_bdry_gss*/ 1.; 
-                 
-             }
-	      } //end face == 3
-	      
-	    } //end if boundary faces
-	  }  // loop over element faces   
-
-//=====================================================================================================================  
-//=====================================================================================================================  
-//=====================================================================================================================  
-  
-  
-   
-      // *** Gauss point loop ***
-      for (unsigned ig = 0; ig < ml_prob.GetQuadratureRule(ielGeom).GetGaussPointsNumber(); ig++) {
-	
-        // *** get gauss point weight, test function and test function partial derivatives ***
-    elem_all[ielGeom][solType_coords]->JacJacInv(geom_element.get_coords_at_dofs_3d(), ig, Jac_qp, JacI_qp, detJac_qp, space_dim);
-    weight = detJac_qp * ml_prob.GetQuadratureRule(ielGeom).GetGaussWeightsPointer()[ig];
-
-    elem_all[ielGeom][solType_u]                 ->shape_funcs_current_elem(ig, JacI_qp, phi_u, phi_u_x, phi_u_xx, space_dim);
-    
-	u_gss     = 0.;  
-    for (unsigned i = 0; i < nDof_u; i++)        u_gss += sol_u[i]     * phi_u[i];
-
-               integral_volume +=  weight * (u_gss) * (u_gss);
-	  
-      } // end gauss point loop
-      
-  } //end element loop
-
-  double total_integral = integral_bdry;
-  
-  
-  ////////////////////////////////////////
-       std::cout << "integral on processor: " << total_integral << std::endl;
-
-   double J = 0.;
-      MPI_Allreduce( &total_integral, &J, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD );  //THIS IS THE RIGHT ONE!!
-
-
-    std::cout << "@@@@@@@@@@@@@@@@ functional value: " << J << std::endl;
-  
-//   std::cout << "The value of the integral_target is " << std::setw(11) << std::setprecision(10) << integral_target << std::endl;
-//   std::cout << "The value of the integral_alpha  is " << std::setw(11) << std::setprecision(10) << integral_alpha << std::endl;
-//   std::cout << "The value of the integral_beta   is " << std::setw(11) << std::setprecision(10) << integral_beta << std::endl;
-//   std::cout << "The value of the total integral  is " << std::setw(11) << std::setprecision(10) << total_integral << std::endl;
- 
-return;
-  
-}

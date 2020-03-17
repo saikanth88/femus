@@ -1,4 +1,5 @@
-//Solve - \Delta u = 1
+//Solve 
+//   - \Delta u = 1
 
 #include "FemusInit.hpp"
 #include "MultiLevelSolution.hpp"
@@ -60,7 +61,7 @@ int main(int argc, char** args) {
     // ======= Mesh  ==================
    std::vector<std::string> mesh_files;
    
-//    mesh_files.push_back("Mesh_1_x.med");
+   mesh_files.push_back("Mesh_1_x.med");
 //    mesh_files.push_back("Mesh_1_y.med");
 //    mesh_files.push_back("Mesh_1_z.med");
 //    mesh_files.push_back("Mesh_2_xy.med");
@@ -69,12 +70,12 @@ int main(int argc, char** args) {
 //    mesh_files.push_back("Mesh_3_xyz.med");
 //    mesh_files.push_back("dome_tri.med");
 //    mesh_files.push_back("dome_quad.med");
-   mesh_files.push_back("disk_quad.med");
-   mesh_files.push_back("disk_quad_45x.med");
-   mesh_files.push_back("disk_quad_90x.med");
-   mesh_files.push_back("disk_tri.med");
-   mesh_files.push_back("disk_tri_45x.med");
-   mesh_files.push_back("disk_tri_90x.med");
+//    mesh_files.push_back("disk_quad.med");
+//    mesh_files.push_back("disk_quad_45x.med");
+//    mesh_files.push_back("disk_quad_90x.med");
+//    mesh_files.push_back("disk_tri.med");
+//    mesh_files.push_back("disk_tri_45x.med");
+//    mesh_files.push_back("disk_tri_90x.med");
    
 
 
@@ -327,7 +328,8 @@ void AssembleProblem(MultiLevelProblem& ml_prob) {
     elem_all[ielGeom][xType]->jac_jacT(Jac_qp, JacJacT, space_dim);
     elem_all[ielGeom][xType]->jac_jacT_inv(JacJacT, JacJacT_inv, space_dim);
 //--------------    
-	std::fill(sol_u_x_gss.begin(), sol_u_x_gss.end(), 0.);
+	sol_u_gss = 0.;
+    std::fill(sol_u_x_gss.begin(), sol_u_x_gss.end(), 0.);
 	
 	for (unsigned i = 0; i < nDof_u; i++) {
 	                                                sol_u_gss      += sol_u[i] * phi_u[i];

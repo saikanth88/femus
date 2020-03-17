@@ -30,6 +30,7 @@
 #include "GaussPoints.hpp"
 #include "adept.h"
 #include "FETypeEnum.hpp"
+#include "GeomElTypeEnum.hpp"
 #include <boost/optional.hpp>
 
 
@@ -105,6 +106,7 @@ namespace femus
                                vector < double >& other_phi, vector < double >& gradphi, vector < double >& normal) const = 0;
       /** To be Added */
       virtual double* GetPhi(const unsigned& ig) const = 0;
+      virtual void GetPhi(std::vector<double> &phi, const vector < double >& xi ) const = 0;
 
       /** To be Added */
       virtual double* GetDPhiDXi(const unsigned& ig) const = 0;
@@ -234,6 +236,7 @@ namespace femus
                                   _nlag[3] = number of tensor-product quadratic dofs in that element after 1 refinement; 
                                   */
       unsigned _SolType;       /* Finite Element Family flag */
+      GeomElType _GeomElemType;  /* Geometric Element flag */
       const double** _X;       /* [_nf][_dim] coordinates of the _nf nodes in the refined elements */ 
       const int** _IND;        /* [_nc][_dim] */ /*///@todo This is only used to evaluate the phi and derivatives */
       const int** _KVERT_IND;  /* [_nf][2] For each _nf: 0 = id of the subdivision of the fine element, 1 = local id node on the subdivision of the fine element*/
@@ -349,6 +352,14 @@ namespace femus
       inline double* GetPhi(const unsigned& ig) const {
         return _phi[ig];
       }
+      
+      void GetPhi(std::vector<double> &phi, const vector < double >& xi ) const {
+        phi.resize(_nc);
+        for(unsigned i = 0; i < _nc; i++) {
+          phi[i] = _pt_basis->eval_phi(_IND[i], &xi[0]);
+        }
+      }
+      
       inline double* GetDPhiDXi(const unsigned& ig) const {
         return _dphidxi[ig];
       }
@@ -486,6 +497,14 @@ namespace femus
       inline double* GetPhi(const unsigned& ig) const {
         return _phi[ig];
       }
+      
+      void GetPhi(std::vector<double> &phi, const vector < double >& xi ) const{
+        phi.resize(_nc);
+        for(unsigned i = 0; i < _nc; i++) {
+          phi[i] = _pt_basis->eval_phi(_IND[i], &xi[0]);
+        }
+      }
+      
       inline double* GetDPhiDXi(const unsigned& ig) const {
         return _dphidxi[ig];
       }
@@ -632,6 +651,14 @@ namespace femus
       inline double* GetPhi(const unsigned& ig) const {
         return _phi[ig];
       }
+      
+      void GetPhi(std::vector<double> &phi, const vector < double >& xi ) const {
+        phi.resize(_nc);
+        for(unsigned i = 0; i < _nc; i++) {
+          phi[i] = _pt_basis->eval_phi(_IND[i], &xi[0]);
+        }
+      }
+      
       inline double* GetDPhiDXi(const unsigned& ig) const {
         return _dphidxi[ig];
       }
