@@ -6,7 +6,7 @@
 #include "Assemble_jacobian.hpp"
 #include "Assemble_unknown_jacres.hpp"
 
-#define FACE_FOR_CONTROL   3
+#define FACE_FOR_CONTROL   4
 
 #include "../../param.hpp"
 
@@ -93,7 +93,7 @@ int main(int argc, char** args) {
   // ======= Mesh  ==================
   MultiLevelMesh ml_mesh;
    
-  std::string input_file = "square_parametric.med";
+  std::string input_file = "Lshaped_4_groups.med";
   std::ostringstream mystream; mystream << "./" << DEFAULT_INPUTDIR << "/" << input_file;
   const std::string infile = mystream.str();
   const double Lref = 1.;

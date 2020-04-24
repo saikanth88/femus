@@ -9,7 +9,7 @@
 #include "ElemType.hpp"
 
 
-#define FACE_FOR_CONTROL             1
+#define FACE_FOR_CONTROL             4
 
 #include "../../param.hpp"
 
@@ -137,7 +137,7 @@ int main(int argc, char** args) {
   MultiLevelMesh ml_mesh;
 
   
-  std::string input_file = "square_4x4.med";
+  std::string input_file = "Lshaped_4_groups.med";
 //   std::string input_file = "square_parametric.med";
 //   std::string input_file = "Mesh_3_groups.med";
   std::ostringstream mystream; mystream << "./" << DEFAULT_INPUTDIR << "/" << input_file;
