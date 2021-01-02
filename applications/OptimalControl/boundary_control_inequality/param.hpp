@@ -21,12 +21,12 @@
 
 
 //*********************** Sets the regularization parameters *******************************************************
-#define ALPHA_CTRL_BDRY 1.e-3
-#define BETA_CTRL_BDRY 1.e-2
+#define ALPHA_CTRL_BDRY 1.e-5
+#define BETA_CTRL_BDRY 1.e-4
 
 
-#define ALPHA_CTRL_VOL 1.e-3
-#define BETA_CTRL_VOL 1.e-2
+#define ALPHA_CTRL_VOL 1.e-4
+#define BETA_CTRL_VOL 1.e-3
 
 
 //*********************** Control boundary extremes *******************************************************
@@ -46,7 +46,7 @@ namespace femus {
  double InequalityConstraint(const std::vector<double> & dof_obj_coord, const bool upper) {
 
      double constr_value = 0.;
-     double constr_value_upper =  .3;// dof_obj_coord[1]*(1. - dof_obj_coord[1]);
+     double constr_value_upper =  .3;//0.5 * dof_obj_coord[AXIS_DIRECTION_CONTROL_SIDE]; //dof_obj_coord[1]*(1. - dof_obj_coord[1]);
      double constr_value_lower = -1000.; //-3.e-13;
      assert(constr_value_lower < constr_value_upper); 
      
