@@ -57,7 +57,7 @@ double Solution_set_initial_conditions(const MultiLevelProblem * ml_prob, const 
         value = ElementTargetFlag(x);
     }
     else if(!strcmp(name,"ContReg")) {
-        value = ControlDomainFlag_bdry(x);
+        value = ControlDomainFlag_internal_restriction(x);
     }
     else if(!strcmp(name,"act_flag")) {
         value = 0.;
@@ -86,29 +86,29 @@ bool Solution_set_boundary_conditions(const std::vector < double >& x, const cha
   
   }
 
-  else if(!strcmp(name,"state")) {  //"state" corresponds to the first block row (u = q)
-      
-  if (faceName == FACE_FOR_CONTROL) {
-      
-     if (x[ axis_direction_Gamma_control(faceName) ] > GAMMA_CONTROL_LOWER - 1.e-5 && x[ axis_direction_Gamma_control(faceName) ] < GAMMA_CONTROL_UPPER + 1.e-5) 
-     { dirichlet = false; }
-     else { dirichlet = true;  }
-  }
-  else { dirichlet = true;  }
-      
-  }
+//   else if(!strcmp(name,"state")) {  //"state" corresponds to the first block row (u = q)
+//       
+//   if (faceName == FACE_FOR_CONTROL) {
+//       
+//      if (x[ axis_direction_Gamma_control(faceName) ] > GAMMA_CONTROL_LOWER - 1.e-5 && x[ axis_direction_Gamma_control(faceName) ] < GAMMA_CONTROL_UPPER + 1.e-5) 
+//      { dirichlet = false; }
+//      else { dirichlet = true;  }
+//   }
+//   else { dirichlet = true;  }
+//       
+//   }
   
-  else if(!strcmp(name,"adjoint")) {  //"state" corresponds to the first block row (u = q)
-      
-  if (faceName == FACE_FOR_CONTROL) {
-      
-     if (x[ axis_direction_Gamma_control(faceName) ] > GAMMA_CONTROL_LOWER - 1.e-5 && x[ axis_direction_Gamma_control(faceName) ] < GAMMA_CONTROL_UPPER + 1.e-5) 
-     { dirichlet = false; }
-     else { dirichlet = true;  }
-  }
-  else { dirichlet = true;  }
-      
-  }
+//   else if(!strcmp(name,"adjoint")) {  //"state" corresponds to the first block row (u = q)
+//       
+//   if (faceName == FACE_FOR_CONTROL) {
+//       
+//      if (x[ axis_direction_Gamma_control(faceName) ] > GAMMA_CONTROL_LOWER - 1.e-5 && x[ axis_direction_Gamma_control(faceName) ] < GAMMA_CONTROL_UPPER + 1.e-5) 
+//      { dirichlet = false; }
+//      else { dirichlet = true;  }
+//   }
+//   else { dirichlet = true;  }
+//       
+//   }
 
   else if(!strcmp(name,"mu")) {
       
@@ -170,7 +170,7 @@ int main(int argc, char** args) {
    //1: bottom  //2: right  //3: top  //4: left (in 2d) GenerateCoarseBoxMesh 
   
 
-  unsigned numberOfUniformLevels = 6;
+  unsigned numberOfUniformLevels = 4;
   unsigned numberOfSelectiveLevels = 0;
   ml_mesh.RefineMesh(numberOfUniformLevels , numberOfUniformLevels + numberOfSelectiveLevels, NULL);
   ml_mesh.EraseCoarseLevels(numberOfUniformLevels - 1);
@@ -424,7 +424,7 @@ void AssembleLiftRestrProblem(MultiLevelProblem& ml_prob) {
   
  //*************************************************** 
 
-  //MU
+ 
   //************** act flag ****************************   
   unsigned int solIndex_act_flag_sol; 
   unsigned int solFEType_act_flag_sol;
@@ -741,7 +741,7 @@ void AssembleLiftRestrProblem(MultiLevelProblem& ml_prob) {
 
                 Res[ assemble_jacobian<double,double>::res_row_index(Sol_n_el_dofs_Mat,pos_mat_ctrl,i_vol) ]  +=  0.; //- control_node_flag[i_vol] *  weight_bdry * ( grad_adj_dot_n_res * phi_ctrl_bdry[i_bdry] );  //fix this
                 
-                Res[ assemble_jacobian<double,double>::res_row_index(Sol_n_el_dofs_Mat,pos_mat_adj,i_vol) ]  += - control_node_flag[i_vol] *  weight_bdry * ( grad_ctrl_dot_n_res * phi_adj_bdry[i_bdry] ); 
+                Res[ assemble_jacobian<double,double>::res_row_index(Sol_n_el_dofs_Mat,pos_mat_adj,i_vol) ]  += - 0; //control_node_flag[i_vol] *  weight_bdry * ( grad_ctrl_dot_n_res * phi_adj_bdry[i_bdry] ); 
 //============ Bdry Residuals ==================    
 		    
 		    for(unsigned j_bdry=0; j_bdry < nDof_max_bdry; j_bdry ++) {
@@ -965,100 +965,9 @@ void AssembleLiftRestrProblem(MultiLevelProblem& ml_prob) {
          assemble_jacobian<double,double>::print_element_jacobian(iel, Jac, Sol_n_el_dofs_Mat, 10, 5);
      }
      
+     RES->insert(Res_mu, L2G_dofmap_Mat[pos_mat_mu]);
      
-  } //end element loop for each process
-  
-
-  //MU
-add_one_times_mu_res_ctrl_bdry(iproc,
-                               ineq_flag,
-                               pos_mat_ctrl,
-                               pos_mat_mu,
-                               SolIndex_Mat,
-                               sol,
-                               mlPdeSys,
-                               pdeSys,
-                               RES);
-
-    
-  // ***************** END ASSEMBLY - ADD PART *******************
-
-RES->close();
-if (assembleMatrix) KK->close();  ///@todo is it needed? I think so
-
-
-//   ***************** INSERT PART - BEGIN (must go AFTER the sum, clearly) *******************
- // One very important thing to consider: we have some PENALTIES that were set before during the SUMMATION part.
- // Now, if we do INSERT, we may end up OVERWRITING certain values, SUCH AS THOSE PENALTIES!!!
-    
-     //MU
-
-   for (int iel = msh->_elementOffset[iproc]; iel < msh->_elementOffset[iproc + 1]; iel++) {
-       
-     geom_element.set_coords_at_dofs_and_geom_type(iel, solType_coords);
-      
-    el_dofs_unknowns(sol, msh, pdeSys, iel,
-                        SolFEType_Mat, SolIndex_Mat, SolPdeIndex,
-                        Sol_n_el_dofs_Mat, sol_eldofs_Mat, L2G_dofmap_Mat);
-
-   geom_element.set_elem_center(iel, solType_coords);
-
- //************ set control flag *********************
-  int control_el_flag = 0;
-        control_el_flag = ControlDomainFlag_bdry(geom_element.get_elem_center());
-//  *************************************************** 
-
-// Perform face loop over elements that contain some control face
-	if (control_el_flag == 1) {
-
-    	  for(unsigned jface=0; jface < msh->GetElementFaceNumber(iel); jface++) {
-
-       geom_element.set_coords_at_dofs_bdry_3d(iel, jface, solType_coords);
-// 	    look for boundary faces
-            const int bdry_index = el->GetFaceElementIndex(iel, jface);
-   
-	    if( bdry_index < 0) {
-            	      const unsigned int face_in_rectangle_domain = -( msh->el->GetFaceElementIndex(iel,jface)+1);
-
-	      if(  face_in_rectangle_domain == FACE_FOR_CONTROL) { //control face
-
-       update_active_set_flag_for_current_nonlinear_iteration_bdry
-   (msh, sol,
-    iel, jface,
-    geom_element.get_coords_at_dofs_bdry_3d(), 
-    sol_eldofs_Mat, 
-    Sol_n_el_dofs_Mat, 
-    pos_mat_mu,               //this becomes a vector
-    pos_mat_ctrl,             //this becomes a vector
-    c_compl, 
-    ctrl_lower, ctrl_upper,   //this becomes a vector
-    sol_actflag,              //this becomes a vector
-    solFEType_act_flag_sol, //remove this one, only Index
-    solIndex_act_flag_sol);   //this becomes a vector
- 
-
-  node_insertion_bdry(iel, jface, 
-                      msh,
-                      L2G_dofmap_Mat,
-                      pos_mat_mu, 
-                      pos_mat_ctrl,
-                      sol_eldofs_Mat,
-                      Sol_n_el_dofs_Mat,
-                      sol_actflag, 
-                      solFEType_act_flag_sol,  //remove this one, only Index
-                      ineq_flag,
-                      c_compl,
-                      ctrl_lower, ctrl_upper,
-                      KK, RES,
-                      assembleMatrix
-                      );
-  
-             }
-          }
-       }
-     }
-
-
+     
     //============= delta_ctrl-delta_mu row ===============================
     if (assembleMatrix) { KK->matrix_set_off_diagonal_values_blocked(L2G_dofmap_Mat[pos_mat_ctrl],  L2G_dofmap_Mat[pos_mat_mu], ineq_flag * 1.); }   //this becomes a vector
     
@@ -1073,8 +982,101 @@ if (assembleMatrix) KK->close();  ///@todo is it needed? I think so
     
     if (assembleMatrix) { KK->matrix_set_off_diagonal_values_blocked(L2G_dofmap_Mat[pos_mat_mu],  L2G_dofmap_Mat[pos_mat_mu], sol_actflag); }
    
-       
- }
+     
+  } //end element loop for each process
+  
+
+  //MU
+// add_one_times_mu_res_ctrl_bdry(iproc,
+//                                ineq_flag,
+//                                pos_mat_ctrl,
+//                                pos_mat_mu,
+//                                SolIndex_Mat,
+//                                sol,
+//                                mlPdeSys,
+//                                pdeSys,
+//                                RES);
+
+    
+  // ***************** END ASSEMBLY - ADD PART *******************
+
+// RES->close();
+// if (assembleMatrix) KK->close();  ///@todo is it needed? I think so
+
+
+//   ***************** INSERT PART - BEGIN (must go AFTER the sum, clearly) *******************
+ // One very important thing to consider: we have some PENALTIES that were set before during the SUMMATION part.
+ // Now, if we do INSERT, we may end up OVERWRITING certain values, SUCH AS THOSE PENALTIES!!!
+    
+     //MU
+
+//    for (int iel = msh->_elementOffset[iproc]; iel < msh->_elementOffset[iproc + 1]; iel++) {
+//        
+//      geom_element.set_coords_at_dofs_and_geom_type(iel, solType_coords);
+//       
+//     el_dofs_unknowns(sol, msh, pdeSys, iel,
+//                         SolFEType_Mat, SolIndex_Mat, SolPdeIndex,
+//                         Sol_n_el_dofs_Mat, sol_eldofs_Mat, L2G_dofmap_Mat);
+// 
+//    geom_element.set_elem_center(iel, solType_coords);
+// 
+//  //************ set control flag *********************
+//   int control_el_flag = 0;
+//         control_el_flag = ControlDomainFlag_bdry(geom_element.get_elem_center());
+//  *************************************************** 
+
+// Perform face loop over elements that contain some control face
+// 	if (control_el_flag == 1) {
+// 
+//     	  for(unsigned jface=0; jface < msh->GetElementFaceNumber(iel); jface++) {
+// 
+//        geom_element.set_coords_at_dofs_bdry_3d(iel, jface, solType_coords);
+// // 	    look for boundary faces
+//             const int bdry_index = el->GetFaceElementIndex(iel, jface);
+//    
+// 	    if( bdry_index < 0) {
+//             	      const unsigned int face_in_rectangle_domain = -( msh->el->GetFaceElementIndex(iel,jface)+1);
+// 
+// 	      if(  face_in_rectangle_domain == FACE_FOR_CONTROL) { //control face
+// 
+//        update_active_set_flag_for_current_nonlinear_iteration_bdry
+//    (msh, sol,
+//     iel, jface,
+//     geom_element.get_coords_at_dofs_bdry_3d(), 
+//     sol_eldofs_Mat, 
+//     Sol_n_el_dofs_Mat, 
+//     pos_mat_mu,               //this becomes a vector
+//     pos_mat_ctrl,             //this becomes a vector
+//     c_compl, 
+//     ctrl_lower, ctrl_upper,   //this becomes a vector
+//     sol_actflag,              //this becomes a vector
+//     solFEType_act_flag_sol, //remove this one, only Index
+//     solIndex_act_flag_sol);   //this becomes a vector
+//  
+// 
+//   node_insertion_bdry(iel, jface, 
+//                       msh,
+//                       L2G_dofmap_Mat,
+//                       pos_mat_mu, 
+//                       pos_mat_ctrl,
+//                       sol_eldofs_Mat,
+//                       Sol_n_el_dofs_Mat,
+//                       sol_actflag, 
+//                       solFEType_act_flag_sol,  //remove this one, only Index
+//                       ineq_flag,
+//                       c_compl,
+//                       ctrl_lower, ctrl_upper,
+//                       KK, RES,
+//                       assembleMatrix
+//                       );
+//   
+//              }
+//           }
+//        }
+//      }
+
+    
+// }
    
    
   // ***************** INSERT PART - END *******************
